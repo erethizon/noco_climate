@@ -1,0 +1,91 @@
+---
+title: "noco_climate.Rmd"
+author: "Erika"
+date: "4/23/2020"
+output: html_document
+---
+
+April, 2020, in addition to being the heart of the COVID-19 outbreak, has been unseasonably cold!
+
+That motivated me to play around with looking at climate data for the region.
+
+I went to the [cornell climod2 website](http://climod2.nrcc.cornell.edu/)  and downloaded a bunch of data from the **Canton SE 4** station from a bunch of years (April 1, 1970- April 22, 2020).  
+
+Prep the workspace
+```{r}
+rm(list = ls())
+library(tidyverse)
+```
+And bring in the data
+
+```{r}
+DF<-read.csv("Data/canton4SE_1970_2020.csv", na.strings = c("M", " M"), stringsAsFactors = F) #brings in the M values (for "Missing") as NA
+```
+Now make the date column into a date, using lubridate.
+```{r}
+library(lubridate)
+DF$Date<-ymd(DF$Date)
+```
+Now look at the data; need to be able to get from chr to numeric, but I suspect there are chrs dispersed throughout that need to be addressed.
+
+T stands for "trace". Replace it throughout with 0.01 in the precipitation columns.
+
+```{r}
+fixem<-which(DF$Precipitation == " T")
+DF$Precipitation[fixem]<- 0.01
+fixem<-which(DF$Snowfall == " T")
+DF$Snowfall[fixem]<-0.01
+fixem<-which(DF$SnowDepth == " T")
+DF$SnowDepth[fixem]<-0.01
+```
+Now make numeric
+```{r}
+DF$Precipitation<-as.numeric(DF$Precipitation)
+DF$SnowDepth<-as.numeric(DF$SnowDepth)
+DF$Snowfall<-as.numeric(DF$Snowfall)
+#note - this makes strings containing the letter "A" or "S" into NA's which is good because S means subsequent and A means accumulated and thus those are summed rather than daily values. We'll ignore them.
+```
+Now get some summary data
+```{r}
+summary(DF)
+```
+Cool!  Now let's make some plots
+```{r}
+ggplot(DF, aes(Date))+
+  geom_line(aes(Date, AvgTemperature),color = "black")
+```
+Add some date columns
+```{r}
+DF$Year<-year(DF$Date)
+DF$Month<-month(DF$Date)
+DF$Julian<-yday(DF$Date)
+```
+Assign each date to a season using meteorologoical seasons; According to meteorologists, 
+
+Spring runs March through May (months 3 - 5)
+Summer runs June through August (months 6 - 8)
+Autumn runs September through November (month 9 - 11)
+Winter runs December through February (monrha 12, 1 and 2)
+
+```{r}
+Spring<-which(DF$Month  == 3 | DF$Month == 4 | DF$Month == 5)
+DF$Season<-NA
+DF$Season[Spring]<-"Spring"
+Summer<-which(DF$Month  == 6 | DF$Month == 7 | DF$Month == 8)
+DF$Season[Summer]<-"Summer"
+Fall<-which(DF$Month  == 9 | DF$Month == 10 | DF$Month == 11)
+DF$Season[Fall]<-"Fall"
+Winter<-which(DF$Month  == 12 | DF$Month == 1 | DF$Month == 2)
+DF$Season[Winter]<-"Winter"
+DF$Season<-as.factor(DF$Season)
+```
+Now make a new plot
+```{r}
+ggplot(DF, aes(Date, AvgTemperature, group = Season, color = Season))+
+  geom_point()+
+  geom_line()
+
+```
+
+
+
